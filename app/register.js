@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 // Import your custom reusable components
+import Screen from '../components/Screen';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 import { useInventory } from '../context/InventoryContext';
@@ -11,12 +11,13 @@ import { useInventory } from '../context/InventoryContext';
 export default function RegisterScreen() {
   const router = useRouter();
   const { registerAccount } = useInventory();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
+
+  const setField = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleRegister = () => {
+    const { fullName, email, password, confirmPassword } = form;
+
     if (!fullName || !email || !password || !confirmPassword) {
       Alert.alert('Validation Error', 'Please fill in all fields.');
       return;
@@ -40,79 +41,44 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Screen>
       <View style={styles.container}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Join FreshTrack today</Text>
 
-        <InputField 
-          placeholder="Full Name" 
-          value={fullName} 
-          onChangeText={setFullName}
-          style={styles.inputSpacing}
-        />
+        <InputField placeholder="Full Name" value={form.fullName} onChangeText={setField('fullName')} style={styles.inputSpacing} />
+        <InputField placeholder="Email Address" keyboardType="email-address" value={form.email} onChangeText={setField('email')} style={styles.inputSpacing} />
+        <InputField placeholder="Password" secureTextEntry value={form.password} onChangeText={setField('password')} style={styles.inputSpacing} />
+        <InputField placeholder="Confirm Password" secureTextEntry value={form.confirmPassword} onChangeText={setField('confirmPassword')} style={styles.inputSpacing} />
 
-        <InputField 
-          placeholder="Email Address" 
-          keyboardType="email-address"
-          value={email} 
-          onChangeText={setEmail}
-          style={styles.inputSpacing}
-        />
-
-        <InputField 
-          placeholder="Password" 
-          secureTextEntry 
-          value={password} 
-          onChangeText={setPassword}
-          style={styles.inputSpacing}
-        />
-
-        <InputField 
-          placeholder="Confirm Password" 
-          secureTextEntry 
-          value={confirmPassword} 
-          onChangeText={setConfirmPassword}
-          style={styles.inputSpacing}
-        />
-
-        <CustomButton 
-          title="Register Account" 
-          onPress={handleRegister} 
-          style={styles.registerButton}
-        />
-
-        <CustomButton 
-          title="Already have an account? Login" 
+        <CustomButton title="Register Account" onPress={handleRegister} style={styles.registerButton} />
+        <CustomButton
+          title="Already have an account? Login"
           type="secondary"
-          onPress={() => router.push('/')} 
+          onPress={() => router.push('/')}
           style={styles.loginLinkButton}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#F4F7F4' 
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24
   },
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    padding: 24 
+  title: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#1E4620',
+    textAlign: 'center'
   },
-  title: { 
-    fontSize: 30, 
-    fontWeight: '800', 
-    color: '#1E4620', 
-    textAlign: 'center' 
-  },
-  subtitle: { 
-    textAlign: 'center', 
-    color: '#668069', 
-    marginBottom: 24 
+  subtitle: {
+    textAlign: 'center',
+    color: '#668069',
+    marginBottom: 24
   },
   inputSpacing: {
     marginBottom: 10,

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 // Import your custom reusable components
+import Screen from '../components/Screen';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 
@@ -29,7 +29,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Screen>
       <View style={styles.container}>
         <Text style={styles.title}>FreshTrack</Text>
         <Text style={styles.subtitle}>Smart Inventory & Expiry Tracking</Text>
@@ -62,15 +62,11 @@ export default function LoginScreen() {
           style={styles.registerButton}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#F4F7F4' 
-  },
   container: { 
     flex: 1, 
     justifyContent: 'center', 
