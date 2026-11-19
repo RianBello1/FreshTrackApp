@@ -1,41 +1,52 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radius, shadow, categoryStyle, isPlaceholderImage } from '../constants/theme';
 
 export default function RecipeCard({ recipe, onDelete, onPress }) {
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <Image source={{ uri: recipe.image }} style={styles.image} resizeMode="cover" />
+  const [imgFailed, setImgFailed] = useState(false);
+  const cat = categoryStyle(recipe.category);
+  const showImage = !isPlaceholderImage(recipe.image) && !imgFailed;
 
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && onPress && { transform: [{ scale: 0.985 }] }]}>
+      {showImage ? (
+        <Image source={{ uri: recipe.image }} style={styles.hero} onError={() => setImgFailed(true)} />
+      ) : (
+        <View style={[styles.hero, { backgroundColor: cat.bg, alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name={cat.icon} size={44} color={cat.color} />
+        </View>
+      )}
       <View style={styles.body}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.title}>{recipe.name}</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{recipe.category}</Text>
+        <View style={styles.row}>
+          <Text style={styles.title} numberOfLines={1}>{recipe.name}</Text>
+          <View style={[styles.badge, { backgroundColor: cat.bg }]}>
+            <Text style={[styles.badgeText, { color: cat.color }]}>{recipe.category}</Text>
           </View>
         </View>
-
-        <Text style={styles.text}>
-          🍽️ Servings: <Text style={styles.boldText}>{recipe.servings}</Text>
-        </Text>
-
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(recipe.id)}>
-          <Text style={styles.deleteBtnText}>🗑️ Delete Recipe</Text>
-        </TouchableOpacity>
+        <View style={styles.row}>
+          <View style={styles.servings}>
+            <Ionicons name="people-outline" size={15} color={colors.textMuted} />
+            <Text style={styles.servingsText}>{recipe.servings} servings</Text>
+          </View>
+          <Pressable onPress={() => onDelete(recipe.id)} hitSlop={10} style={styles.delete}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          </Pressable>
+        </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 14, borderWidth: 1, borderColor: '#E0E7E0', overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
-  image: { width: '100%', height: 150, backgroundColor: '#E0E7E0' },
-  body: { padding: 16 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: '700', color: '#1E4620', flexShrink: 1, marginRight: 8 },
-  text: { fontSize: 14, color: '#4A5D4E', marginBottom: 4 },
-  boldText: { fontWeight: '600', color: '#2E4A32' },
-  badge: { backgroundColor: '#D4EDDA', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeText: { fontSize: 12, fontWeight: '700', color: '#1E4620' },
-  deleteBtn: { backgroundColor: '#E57373', paddingVertical: 10, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-  deleteBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 }
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, marginBottom: 14, overflow: 'hidden', ...shadow.card },
+  hero: { width: '100%', height: 140 },
+  body: { padding: 14, gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  title: { flex: 1, fontSize: 18, fontWeight: '800', color: colors.text },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
+  badgeText: { fontSize: 12, fontWeight: '800' },
+  servings: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  servingsText: { fontSize: 13, color: colors.textMuted },
+  delete: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
 });

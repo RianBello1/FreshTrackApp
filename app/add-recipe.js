@@ -1,116 +1,118 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform, StatusBar, Alert, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Pressable, Switch, StyleSheet, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-// Import your custom reusable components
+import Screen from '../components/Screen';
+import ScreenHeader from '../components/ScreenHeader';
 import InputField from '../components/InputField';
+import IngredientSuggest from '../components/IngredientSuggest';
+import AllergenChips from '../components/AllergenChips';
+import PhotoField from '../components/PhotoField';
 import CustomButton from '../components/CustomButton';
-import { useRecipes } from '../context/RecipeContext';
+import NoAccess from '../components/NoAccess';
+import { useMenu } from '../context/MenuContext';
+import { usePermissions } from '../context/AuthContext';
+import { useThemedStyles, useTheme } from '../context/ThemeContext';
+import { radius } from '../constants/theme';
+import { detectAll } from '../utils/allergens';
 
-export default function AddRecipeScreen() {
+// Add your own signature dish (separate from dishes imported from TheMealDB).
+export default function AddDishScreen() {
   const router = useRouter();
-  const { addRecipe } = useRecipes();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const perms = usePermissions();
+  const { addDish } = useMenu();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [servings, setServings] = useState('2');
-  const [description, setDescription] = useState('');
+  const [servings, setServings] = useState('1');
+  const [instructions, setInstructions] = useState('');
+  const [ingText, setIngText] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [allergens, setAllergens] = useState([]);
+  const [touched, setTouched] = useState(false);
   const [image, setImage] = useState('');
+  const [enabled, setEnabled] = useState(true);
+
+  if (!perms.menu) return <NoAccess title="Add dish" />;
+
+  const refreshAllergens = (list) => { if (!touched) setAllergens(detectAll(list.map((i) => i.name))); };
+  const addIngredient = (n) => {
+    const clean = (n || '').trim();
+    if (!clean || ingredients.some((i) => i.name.toLowerCase() === clean.toLowerCase())) { setIngText(''); return; }
+    const next = [...ingredients, { name: clean, measure: '' }];
+    setIngredients(next); setIngText(''); refreshAllergens(next);
+  };
+  const removeIngredient = (n) => {
+    const next = ingredients.filter((i) => i.name !== n);
+    setIngredients(next); refreshAllergens(next);
+  };
 
   const handleSave = () => {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a recipe name.');
-      return;
-    }
-
-    const fallbackImage = `https://via.placeholder.com/600x400/4CAF50/FFFFFF.png?text=${encodeURIComponent(name.trim())}`;
-
-    addRecipe({
-      id: Date.now().toString(),
-      name: name.trim(),
-      category: category.trim() || 'General',
-      servings: parseInt(servings) || 1,
-      description: description.trim(),
-      image: image.trim() || fallbackImage,
+    if (!name.trim()) { Alert.alert('Error', 'Please enter a dish name.'); return; }
+    if (ingredients.length === 0) { Alert.alert('Ingredients', 'Add at least one ingredient so the app can match it to your stock.'); return; }
+    const r = addDish({
+      source: 'custom', name: name.trim(), category: category.trim() || 'General', servings: parseInt(servings) || 1,
+      instructions: instructions.trim(), image: image.trim(), ingredients, allergens, enabled,
     });
+    if (!r.ok) { Alert.alert('Not saved', r.error); return; }
     router.back();
   };
 
-  const previewImage = image.trim() || `https://via.placeholder.com/600x400/4CAF50/FFFFFF.png?text=${encodeURIComponent(name.trim() || 'Recipe')}`;
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>➕ Add Recipe</Text>
-        <Text style={styles.subtitle}>Enter recipe details below</Text>
+    <Screen scroll>
+      <ScreenHeader title="Add dish" subtitle="Your own recipe for the menu" />
+      <View style={styles.card}>
+        <InputField icon="restaurant-outline" label="Dish name" placeholder="e.g. Pan-seared Salmon" value={name} onChangeText={setName} />
+        <View style={styles.row}>
+          <InputField style={{ flex: 1.4 }} icon="albums-outline" label="Category" placeholder="e.g. Seafood" value={category} onChangeText={setCategory} />
+          <InputField style={{ flex: 1 }} icon="people-outline" label="Servings" keyboardType="numeric" placeholder="1" value={servings} onChangeText={setServings} />
+        </View>
 
-        <Image source={{ uri: previewImage }} style={styles.previewImage} resizeMode="cover" />
+        <IngredientSuggest label="Ingredients" icon="nutrition-outline" placeholder="Search and tap to add" value={ingText} onChangeText={setIngText} onSelect={(ing) => addIngredient(ing.name)} onSubmit={() => addIngredient(ingText)} showStatus />
+        <View style={styles.chips}>
+          {ingredients.map((i) => (
+            <Pressable key={i.name} onPress={() => removeIngredient(i.name)} style={styles.chip}>
+              <Text style={styles.chipText}>{i.name}</Text>
+              <Ionicons name="close" size={14} color={colors.primaryMid} />
+            </Pressable>
+          ))}
+        </View>
+        {ingText.trim().length > 0 && (
+          <Pressable onPress={() => addIngredient(ingText)} style={styles.addCustom}>
+            <Ionicons name="add" size={16} color={colors.primaryMid} />
+            <Text style={styles.addCustomText}>Add "{ingText.trim()}" as typed</Text>
+          </Pressable>
+        )}
 
-        <InputField
-          label="Recipe Name"
-          placeholder="e.g. Chicken Curry"
-          value={name}
-          onChangeText={setName}
-          style={styles.inputSpacing}
-        />
+        <AllergenChips value={allergens} onChange={(a) => { setTouched(true); setAllergens(a); }} />
+        <InputField icon="document-text-outline" label="Method (optional)" placeholder="Short description or steps..." multiline value={instructions} onChangeText={setInstructions} />
+        <PhotoField label="Photo of the dish" value={image} onChange={setImage} category={category} />
 
-        <InputField
-          label="Category"
-          placeholder="e.g. Main Course, Dessert, Salad..."
-          value={category}
-          onChangeText={setCategory}
-          style={styles.inputSpacing}
-        />
-
-        <InputField
-          label="Servings"
-          keyboardType="numeric"
-          placeholder="2"
-          value={servings}
-          onChangeText={setServings}
-          style={styles.inputSpacing}
-        />
-
-        <InputField
-          label="Description"
-          placeholder="Short description of the recipe..."
-          value={description}
-          onChangeText={setDescription}
-          style={styles.inputSpacing}
-        />
-
-        <InputField
-          label="Image URL (optional)"
-          placeholder="https://..."
-          value={image}
-          onChangeText={setImage}
-          style={styles.inputSpacing}
-        />
-
-        <CustomButton
-          title="Save Recipe"
-          onPress={handleSave}
-          style={styles.saveBtn}
-        />
-
-        <CustomButton
-          title="← Back to Dashboard"
-          type="secondary"
-          onPress={() => router.back()}
-          style={styles.backBtn}
-        />
+        <View style={styles.switchRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchTitle}>Serve on the menu now</Text>
+            <Text style={styles.switchSub}>You can turn this on or off later.</Text>
+          </View>
+          <Switch value={enabled} onValueChange={setEnabled} trackColor={{ true: colors.primary, false: colors.border }} thumbColor="#fff" />
+        </View>
       </View>
-    </SafeAreaView>
+      <CustomButton title="Save dish" icon="checkmark" onPress={handleSave} style={{ marginTop: 10 }} />
+      <CustomButton title="Cancel" type="ghost" onPress={() => router.back()} />
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  container: { flex: 1, padding: 24 },
-  title: { fontSize: 24, fontWeight: '800', color: '#1E4620', marginTop: 10 },
-  subtitle: { fontSize: 14, color: '#668069', marginBottom: 16 },
-  previewImage: { width: '100%', height: 140, borderRadius: 10, marginBottom: 16, backgroundColor: '#E0E7E0' },
-  inputSpacing: { marginBottom: 10 },
-  saveBtn: { backgroundColor: '#4CAF50', marginTop: 10 },
-  backBtn: { borderColor: 'transparent', marginTop: 4 }
+const makeStyles = ({ colors }) => StyleSheet.create({
+  card: { backgroundColor: colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: colors.border },
+  row: { flexDirection: 'row', gap: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.primarySoft },
+  chipText: { fontSize: 13, fontWeight: '800', color: colors.primaryMid },
+  addCustom: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  addCustomText: { fontSize: 13, fontWeight: '800', color: colors.primaryMid },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
+  switchTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+  switchSub: { fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
 });

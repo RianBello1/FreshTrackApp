@@ -1,26 +1,12 @@
-# FreshTrack
+# FreshTrack (restaurant edition)
 
-Expo app using **Expo Router** (file-based routing in the `/app` folder).
+Expo + React Native app (Expo Router) for tracking kitchen stock, waste, menu and allergens.
 
-## Routes
-
-| File                  | URL              | Screen        |
-| --------------------- | ---------------- | ------------- |
-| `app/_layout.js`      | —                | Root stack    |
-| `app/index.js`        | `/`              | Login         |
-| `app/register.js`     | `/register`      | Register      |
-| `app/dashboard.js`    | `/dashboard`     | Dashboard     |
-| `app/add-item.js`     | `/add-item`      | Add item      |
-| `app/expiring-soon.js`| `/expiring-soon` | Expiring soon |
-
-Inventory state lives in `context/InventoryContext.js` (in memory, no AsyncStorage).
-
-## Run
-
+## Setup
 ```
 npm install
-npx expo install --fix
+npx expo install @react-native-async-storage/async-storage expo-image-picker expo-print expo-sharing expo-file-system
 npx expo start
 ```
 
-Login: `admin123` / `admin123`
+Log in with `admin123` / `admin123` (manager). New sign-ups start as Cooks; a manager promotes them on the Staff screen.

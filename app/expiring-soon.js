@@ -1,46 +1,53 @@
-import React from 'react';
-import { Text, StyleSheet, ScrollView, Platform, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import CustomButton from '../components/CustomButton';
+import Screen from '../components/Screen';
+import ScreenHeader from '../components/ScreenHeader';
 import ItemCard from '../components/ItemCard';
+import CustomButton from '../components/CustomButton';
+import QuantityModal from '../components/QuantityModal';
 import { useInventory } from '../context/InventoryContext';
+import { usePermissions } from '../context/AuthContext';
+import { useThemedStyles, useTheme } from '../context/ThemeContext';
+import { EXPIRING_DAYS } from '../constants/theme';
+import { money } from '../utils/format';
 
 export default function ExpiringSoonScreen() {
   const router = useRouter();
-  const { items, deleteItem } = useInventory();
-
-  const expiringItems = items.filter(item => item.daysLeft <= 2);
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { items, stats, deleteItem, consumeItem } = useInventory();
+  const perms = usePermissions();
+  const [useTarget, setUseTarget] = useState(null);
+  const expiring = items.filter((i) => i.daysLeft <= EXPIRING_DAYS).sort((a, b) => a.daysLeft - b.daysLeft);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>⏰ Items Expiring Soon</Text>
-
-        {expiringItems.length === 0 ? (
-          <Text style={styles.empty}>No items currently expiring soon.</Text>
-        ) : (
-          expiringItems.map(item => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onDelete={deleteItem}
-              onPress={() => router.push(`/details/${item.id}`)}
-            />
-          ))
-        )}
-
-        <CustomButton title="← Back to Dashboard" type="secondary" onPress={() => router.back()} style={styles.backBtn} />
-      </ScrollView>
-    </SafeAreaView>
+    <Screen scroll>
+      <ScreenHeader title="Expiring soon" subtitle={`Within ${EXPIRING_DAYS} days · ${money(stats.expiringValue)} at risk`} />
+      {expiring.length === 0 ? (
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}><Ionicons name="checkmark-done" size={32} color={colors.primary} /></View>
+          <Text style={styles.emptyTitle}>All clear</Text>
+          <Text style={styles.emptyText}>No items currently expiring soon.</Text>
+        </View>
+      ) : (
+        <>
+          <CustomButton title="Suggest dishes for these" icon="sparkles" onPress={() => router.push('/specials')} style={{ marginTop: 0, marginBottom: 14 }} />
+          {expiring.map((item) => (
+            <ItemCard key={item.id} item={item} onPress={() => router.push(`/details/${item.id}`)} onUse={setUseTarget} onDelete={perms.trash ? deleteItem : undefined} />
+          ))}
+        </>
+      )}
+      <QuantityModal visible={!!useTarget} mode="used" item={useTarget} onCancel={() => setUseTarget(null)} onSubmit={(qty) => { consumeItem(useTarget.id, qty); setUseTarget(null); }} />
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F4F7F4', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  container: { padding: 20 },
-  title: { fontSize: 24, fontWeight: '800', color: '#D32F2F', marginVertical: 20 },
-  empty: { textAlign: 'center', color: '#888', marginVertical: 30, fontSize: 15 },
-  backBtn: { marginTop: 20, borderColor: '#527956' }
+const makeStyles = ({ colors }) => StyleSheet.create({
+  empty: { alignItems: 'center', paddingVertical: 70 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 26, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  emptyTitle: { fontSize: 19, fontWeight: '800', color: colors.text },
+  emptyText: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
 });

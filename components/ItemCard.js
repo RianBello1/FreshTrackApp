@@ -1,47 +1,73 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AllergenTags } from './AllergenChips';
+import { useThemedStyles, useTheme } from '../context/ThemeContext';
+import { radius, categoryStyle, freshness, isPlaceholderImage } from '../constants/theme';
+import { money, qtyText } from '../utils/format';
 
-export default function ItemCard({ item, onDelete, onPress }) {
-  const isExpiring = item.daysLeft <= 2;
+// onUse: show the "mark as used" button. onDelete: show the trash button (chef/manager only).
+export default function ItemCard({ item, onPress, onUse, onDelete }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const [imgFailed, setImgFailed] = useState(false);
+  const status = freshness(item.daysLeft, colors);
+  const cat = categoryStyle(item.category);
+  const showImage = !isPlaceholderImage(item.image) && !imgFailed;
+  const value = (item.quantity || 0) * (item.costPerUnit || 0);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
-
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && onPress && { transform: [{ scale: 0.985 }] }]}>
+      <View style={[styles.accent, { backgroundColor: status.color }]} />
+      {showImage ? (
+        <Image source={{ uri: item.image }} style={styles.thumb} onError={() => setImgFailed(true)} />
+      ) : (
+        <View style={[styles.thumb, { backgroundColor: cat.bg, alignItems: 'center', justifyContent: 'center' }]}>
+          <Ionicons name={cat.icon} size={28} color={cat.color} />
+        </View>
+      )}
       <View style={styles.body}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{item.name}</Text>
-          <View style={[styles.badge, isExpiring ? styles.badgeWarning : styles.badgeSuccess]}>
-            <Text style={styles.badgeText}>
-              {isExpiring ? `⚠️ ${item.daysLeft}d left` : '✅ Fresh'}
-            </Text>
+        <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{item.category} · {qtyText(item.quantity, item.unit)}{value > 0 ? ` · ${money(value)}` : ''}</Text>
+        <View style={styles.footer}>
+          <View style={[styles.pill, { backgroundColor: status.bg }]}>
+            <Ionicons name={status.icon} size={12} color={status.color} />
+            <Text style={[styles.pillText, { color: status.color }]}>{status.label}</Text>
+          </View>
+          <View style={styles.dateRow}>
+            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.date}>{item.expiryDate}</Text>
           </View>
         </View>
-
-        <Text style={styles.text}>📦 Quantity: <Text style={styles.bold}>{item.quantity}</Text></Text>
-        <Text style={styles.text}>🏷️ Category: <Text style={styles.bold}>{item.category}</Text></Text>
-        <Text style={styles.text}>📅 Expires: <Text style={styles.bold}>{item.expiryDate}</Text></Text>
-
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(item.id)}>
-          <Text style={styles.deleteBtnText}>🗑️ Delete Item</Text>
-        </TouchableOpacity>
+        <AllergenTags value={item.allergens} style={{ marginTop: 6 }} />
       </View>
-    </TouchableOpacity>
+      <View style={{ gap: 8 }}>
+        {onUse && (
+          <Pressable onPress={() => onUse(item)} hitSlop={8} style={({ pressed }) => [styles.action, { backgroundColor: colors.primarySoft }, pressed && { opacity: 0.5 }]}>
+            <Ionicons name="checkmark-done" size={19} color={colors.primaryMid} />
+          </Pressable>
+        )}
+        {onDelete && (
+          <Pressable onPress={() => onDelete(item.id)} hitSlop={8} style={({ pressed }) => [styles.action, { backgroundColor: colors.dangerSoft }, pressed && { opacity: 0.5 }]}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          </Pressable>
+        )}
+      </View>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 14, borderWidth: 1, borderColor: '#E0E7E0', overflow: 'hidden' },
-  image: { width: '100%', height: 140, backgroundColor: '#E0E7E0' },
-  body: { padding: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: '700', color: '#1E4620' },
-  text: { fontSize: 14, color: '#4A5D4E', marginBottom: 4 },
-  bold: { fontWeight: '600', color: '#2E4A32' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeWarning: { backgroundColor: '#FFF3CD' },
-  badgeSuccess: { backgroundColor: '#D4EDDA' },
-  badgeText: { fontSize: 12, fontWeight: '700', color: '#1E4620' },
-  deleteBtn: { backgroundColor: '#E57373', paddingVertical: 10, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-  deleteBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 }
+const makeStyles = ({ colors, shadow, isDark }) => StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 12, paddingLeft: 16, marginBottom: 12, overflow: 'hidden', borderWidth: isDark ? 1 : 0, borderColor: colors.border, ...shadow.card },
+  accent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  thumb: { width: 62, height: 62, borderRadius: radius.md, backgroundColor: colors.inputBg },
+  body: { flex: 1 },
+  title: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  meta: { fontSize: 12.5, color: colors.textMuted, marginTop: 2 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 7, flexWrap: 'wrap' },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill },
+  pillText: { fontSize: 11.5, fontWeight: '800' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  date: { fontSize: 12, color: colors.textMuted },
+  action: { width: 38, height: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
 });
